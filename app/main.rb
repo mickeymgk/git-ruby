@@ -29,6 +29,17 @@ when "hash-object"
   zlib_content = Zlib::Deflate.deflate(header + content)
   Dir.mkdir(".git/objects/#{sha1[0,2]}")
   File.write(".git/objects/#{sha1[0,2]}/#{sha1[2,38]}", "#{zlib_content}\n")
+when "ls-tree"
+  option = ARGV[1]
+  tree_sha = ARGV[2]
+  path = File.join(".git", "objects", tree_sha[0..1], tree_sha[2..-1])
+  blob = IO.binread(path)
+  uncompressed = Zlib::Inflate.inflate(blob)
+  content = uncompressed.split("\0")
+  content.each_with_index do |d, i|
+    file = d.scan(/[a-zA-Z]+$/)
+    puts file
+  end
 else
   raise RuntimeError.new("Unknown command #{command}")
 end
