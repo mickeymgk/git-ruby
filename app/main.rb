@@ -110,6 +110,10 @@ when "commit-tree"
 
   commit_sha = write_object(commit_content, type: "commit")
   puts commit_sha
+when "clone"
+  url = ARGV[1]
+  directory = ARGV[2]
+  system("git clone #{url} #{directory}")
 else
   raise RuntimeError.new("Unknown command #{command}")
 end
