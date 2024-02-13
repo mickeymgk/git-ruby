@@ -1,6 +1,7 @@
 require 'zlib'
 require 'digest'
 require 'fileutils'
+require 'time'
 # You can use print statements as follows for debugging, they'll be visible when running tests.
 # puts "Logs from your program will appear here!"
 
@@ -73,6 +74,42 @@ when "ls-tree"
   end
 when "write-tree"
   puts write_tree('.')
+when "commit-tree"
+  tree_sha = ARGV[1]
+  parent_commit_sha = nil
+  message = nil
+
+  i = 2
+  while i < ARGV.length
+    case ARGV[i]
+    when "-p"
+      parent_commit_sha = ARGV[i + 1]
+      i += 2
+    when "-m"
+      message = ARGV[i + 1]
+      i += 2
+    else
+      raise ArgumentError.new("Invalid argument: #{ARGV[i]}")
+    end
+  end
+
+  author_name = "Your Name"
+  author_email = "your.email@example.com"
+  committer_name = "Your Name"
+  committer_email = "your.email@example.com"
+  timestamp = Time.now.to_i
+
+  parent_info = parent_commit_sha ? "-p #{parent_commit_sha}" : ""
+  message_info = "-m \"#{message}\""
+
+  commit_content = "tree #{tree_sha}\n"
+  commit_content += "parent #{parent_commit_sha}\n" if parent_commit_sha
+  commit_content += "author #{author_name} <#{author_email}> #{timestamp} +0000\n"
+  commit_content += "committer #{committer_name} <#{committer_email}> #{timestamp} +0000\n"
+  commit_content += "\n#{message}\n"
+
+  commit_sha = write_object(commit_content, type: "commit")
+  puts commit_sha
 else
   raise RuntimeError.new("Unknown command #{command}")
 end
