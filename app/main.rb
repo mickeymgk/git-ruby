@@ -1,9 +1,40 @@
-require zlib
+require 'zlib'
 require 'digest'
+require 'fileutils'
 # You can use print statements as follows for debugging, they'll be visible when running tests.
 # puts "Logs from your program will appear here!"
 
 # Uncomment this block to pass the first stage
+
+def write_object(object, type: "blob")
+  content_to_write = format("%s %d\x00%s", type, object.bytesize, object)
+  sha = Digest::SHA1.hexdigest(content_to_write)
+  object_path = File.join(".git", "objects", sha[0..1], sha[2..])
+  FileUtils.mkdir_p(File.dirname(object_path))
+  FileUtils.rm_f(object_path) if File.exist?(object_path)
+  File.write(object_path, Zlib::Deflate.deflate(content_to_write))
+  sha
+end
+
+def write_tree(dir = ".")
+  children = Dir.children(dir) - [".git", ".ruby-lsp"]
+  tree_content = children.sort.map do |child|
+    child_path = File.join(dir, child)
+    stat = File.stat(child_path)
+    if stat.directory?
+      content = [write_tree(child_path)].pack("H*")
+      object_mode = "40000"
+    elsif stat.executable?
+      content = [write_object(File.read(child_path))].pack("H*")
+      object_mode = "100755"
+    else
+      content = [write_object(File.read(child_path))].pack("H*")
+      object_mode = "100644"
+    end
+    format("%s %s\x00%s", object_mode, child, content)
+  end.join("")
+  write_object(tree_content, type: "tree")
+end
 
 command = ARGV[0]
 case command
@@ -40,6 +71,8 @@ when "ls-tree"
     file = d.scan(/[a-zA-Z]+$/)
     puts file
   end
+when "write-tree"
+  puts write_tree('.')
 else
   raise RuntimeError.new("Unknown command #{command}")
 end
